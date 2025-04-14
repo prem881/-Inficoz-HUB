@@ -2,7 +2,7 @@ local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/
 
 local Window = Fluent:CreateWindow({
     Title = "Inficoz HUB",
-    SubTitle = "by Inficoz",
+    SubTitle = "by Nes",
     TabWidth = 120,
     Size = UDim2.fromOffset(450, 320),
     Acrylic = true,
@@ -14,6 +14,7 @@ local Tabs = {
     Main = Window:AddTab({ Title = "Main", Icon = "Sword" }),
 }
 
+-- Buff Gun System
 local function ApplyBuffs(Character)
     repeat task.wait() until Character:FindFirstChildOfClass("Tool") or task.wait(1)
     local Weapon = Character:FindFirstChildOfClass("Tool")
@@ -24,48 +25,92 @@ local function ApplyBuffs(Character)
     end
 end
 
-local ToggleConnection = nil
-local Enabled = false
+local BuffConnection = nil
+local BuffEnabled = false
+
+local ToggleBuff = function(state)
+    BuffEnabled = state
+    if BuffEnabled then
+        pcall(function()
+            require(game:GetService("ReplicatedStorage").Blaster.Scripts.CameraRecoiler).recoil = function() end
+        end)
+        ApplyBuffs(game.Players.LocalPlayer.Character)
+        BuffConnection = game.Players.LocalPlayer.CharacterAdded:Connect(function(char)
+            char:WaitForChild("Humanoid")
+            ApplyBuffs(char)
+        end)
+    else
+        if BuffConnection then
+            BuffConnection:Disconnect()
+            BuffConnection = nil
+        end
+    end
+end
 
 Tabs.Main:AddToggle("BuffToggle", {
     Title = "🔫 Buff Gun (No Recoil / Rapid Fire)",
     Default = false,
-    Callback = function(value)
-        Enabled = value
-
-        if Enabled then
-            pcall(function()
-                require(game:GetService("ReplicatedStorage").Blaster.Scripts.CameraRecoiler).recoil = function() end
-            end)
-
-            ApplyBuffs(game.Players.LocalPlayer.Character)
-
-            ToggleConnection = game.Players.LocalPlayer.CharacterAdded:Connect(function(char)
-                char:WaitForChild("Humanoid")
-                ApplyBuffs(char)
-            end)
-        else
-            if ToggleConnection then
-                ToggleConnection:Disconnect()
-                ToggleConnection = nil
-            end
-        end
-    end
+    Callback = ToggleBuff
 })
 
-local UserInputService = game:GetService("UserInputService")
+-- Noclip System
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local Plr = Players.LocalPlayer
+local Clipon = false
+local NoclipStepped = nil
 
+local ToggleNoclip = function(state)
+    Clipon = state
+    if Clipon then
+        NoclipStepped = RunService.Stepped:Connect(function()
+            for _, b in pairs(Workspace:GetChildren()) do
+                if b.Name == Plr.Name then
+                    for _, v in pairs(b:GetChildren()) do
+                        if v:IsA("BasePart") then
+                            v.CanCollide = false
+                        end
+                    end
+                end
+            end
+        end)
+    else
+        if NoclipStepped then
+            NoclipStepped:Disconnect()
+            NoclipStepped = nil
+        end
+    end
+end
+
+Tabs.Main:AddToggle("NoclipToggle", {
+    Title = "🧱 Noclip",
+    Default = false,
+    Callback = ToggleNoclip
+})
+
+-- Keybind: Press E to enable both Buff Gun and Noclip
+local UserInputService = game:GetService("UserInputService")
 local guiVisible = true
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
-    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.RightControl then
-        guiVisible = not guiVisible
-        Window:SetVisible(guiVisible)
+
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        if input.KeyCode == Enum.KeyCode.RightControl then
+            guiVisible = not guiVisible
+            Window:SetVisible(guiVisible)
+        elseif input.KeyCode == Enum.KeyCode.E then
+            -- Toggle both Buff and Noclip ON
+            ToggleBuff(true)
+            Fluent.Toggles.BuffToggle:Set(true)
+            ToggleNoclip(true)
+            Fluent.Toggles.NoclipToggle:Set(true)
+        end
     end
 end)
 
--- บันทึก UI/Config
+-- Save/Load Config
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
