@@ -1,0 +1,77 @@
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+
+local Window = Fluent:CreateWindow({
+    Title = "Inficoz HUB",
+    SubTitle = "by Inficoz",
+    TabWidth = 120,
+    Size = UDim2.fromOffset(450, 320),
+    Acrylic = true,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.RightControl
+})
+
+local Tabs = {
+    Main = Window:AddTab({ Title = "Main", Icon = "Sword" }),
+}
+
+local function ApplyBuffs(Character)
+    repeat task.wait() until Character:FindFirstChildOfClass("Tool") or task.wait(1)
+    local Weapon = Character:FindFirstChildOfClass("Tool")
+    if Weapon then
+        Weapon:SetAttribute("spread", 0)
+        Weapon:SetAttribute("rateOfFire", 1200)
+        Weapon:SetAttribute("reloadTime", 0)
+    end
+end
+
+local ToggleConnection = nil
+local Enabled = false
+
+Tabs.Main:AddToggle("BuffToggle", {
+    Title = "🔫 Buff Gun (No Recoil / Rapid Fire)",
+    Default = false,
+    Callback = function(value)
+        Enabled = value
+
+        if Enabled then
+            pcall(function()
+                require(game:GetService("ReplicatedStorage").Blaster.Scripts.CameraRecoiler).recoil = function() end
+            end)
+
+            ApplyBuffs(game.Players.LocalPlayer.Character)
+
+            ToggleConnection = game.Players.LocalPlayer.CharacterAdded:Connect(function(char)
+                char:WaitForChild("Humanoid")
+                ApplyBuffs(char)
+            end)
+        else
+            if ToggleConnection then
+                ToggleConnection:Disconnect()
+                ToggleConnection = nil
+            end
+        end
+    end
+})
+
+local UserInputService = game:GetService("UserInputService")
+
+local guiVisible = true
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.RightControl then
+        guiVisible = not guiVisible
+        Window:SetVisible(guiVisible)
+    end
+end)
+
+-- บันทึก UI/Config
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({})
+InterfaceManager:BuildInterfaceSection(Tabs.Main)
+SaveManager:BuildConfigSection(Tabs.Main)
